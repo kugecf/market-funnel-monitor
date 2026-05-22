@@ -1,0 +1,52 @@
+﻿name: Market Funnel Monitor
+
+on:
+  schedule:
+    # 美东下午 4:30（收盘后半小时），周一至周五
+    # 对应北京时间周二至周六凌晨 4:30
+    - cron: "30 20 * * 1-5"
+  workflow_dispatch:
+    inputs:
+      force_weekly:
+        description: "强制发送每周报告 (true/false)"
+        required: false
+        default: "false"
+
+jobs:
+  run-monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Funnel Monitor
+        env:
+          SERVER_CHAN_KEY: ${{ secrets.SERVER_CHAN_KEY }}
+          NOTIFY_URL: ${{ secrets.NOTIFY_URL }}
+          FORCE_WEEKLY: ${{ github.event.inputs.force_weekly }}
+        run: python main.py
+
+      - name: Commit market log (if changed)
+        if: success() || failure()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add market_log.csv
+          if git diff --cached --quiet; then
+            echo "No log changes to commit."
+          else
+            git commit -m "📊 auto: update market_log.csv [skip ci]"
+            git push
+          fi
