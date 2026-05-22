@@ -7,7 +7,8 @@
 #
 # 通知方式（参考 kugecf/daily-report）：
 #   主通道：Server酱 (SERVER_CHAN_KEY) → 微信推送
-#   备通道：通用 WebHook (NOTIFY_URL) → Bark / PushPlus 等
+#   备通道一：PushPlus (PUSHPLUS_TOKEN) → 微信推送
+#   备通道二：通用 WebHook (NOTIFY_URL) → Bark 等
 #
 # 依赖：requests, yfinance, pandas
 
@@ -34,6 +35,7 @@ log = logging.getLogger("funnel-monitor")
 
 # ==================== Configuration ====================
 SERVER_CHAN_KEY = os.environ.get("SERVER_CHAN_KEY", "")       # Server酱 SendKey
+PUSHPLUS_TOKEN = os.environ.get("PUSHPLUS_TOKEN", "")         # PushPlus Token
 NOTIFY_URL = os.environ.get("NOTIFY_URL", "")                 # 通用 WebHook (Bark 等)
 MAX_RETRIES = 3
 RETRY_DELAY = 5
@@ -139,8 +141,36 @@ def send_via_server_chan(title: str, content: str) -> bool:
     return False
 
 
+def send_via_pushplus(title: str, content: str) -> bool:
+    """通过 PushPlus 发送微信推送（备通道一）"""
+    if not PUSHPLUS_TOKEN:
+        return False
+
+    url = "http://www.pushplus.plus/send"
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            r = requests.post(url, json={
+                "token": PUSHPLUS_TOKEN,
+                "title": title,
+                "content": content,
+                "template": "txt",
+            }, timeout=15)
+            if r.status_code < 400:
+                log.info("PushPlus 发送成功 (HTTP %d)", r.status_code)
+                return True
+            log.warning("PushPlus 返回非 2xx: HTTP %d", r.status_code)
+        except Exception:
+            log.exception("PushPlus 发送异常 (attempt %d/%d)", attempt, MAX_RETRIES)
+        if attempt < MAX_RETRIES:
+            time.sleep(RETRY_DELAY)
+
+    log.error("PushPlus 发送最终失败")
+    return False
+
+
 def send_via_webhook(msg: str) -> bool:
-    """通过通用 WebHook 发送（备通道，如 Bark / PushPlus）"""
+    """通过通用 WebHook 发送（备通道二，如 Bark）"""
+
     if not NOTIFY_URL:
         return False
 
@@ -166,7 +196,13 @@ def send_notification(title: str, msg: str) -> bool:
         ok = send_via_server_chan(title, msg)
         if ok:
             return True
-        log.warning("Server酱失败，尝试 WebHook 备通道...")
+        log.warning("Server酱失败，尝试 PushPlus 备通道...")
+
+    if PUSHPLUS_TOKEN:
+        ok = send_via_pushplus(title, msg)
+        if ok:
+            return True
+        log.warning("PushPlus 失败，尝试 WebHook 备通道...")
 
     if NOTIFY_URL:
         ok = send_via_webhook(msg)
@@ -175,7 +211,7 @@ def send_notification(title: str, msg: str) -> bool:
 
     # 两个通道都不可用或都失败，打印到控制台
     if not SERVER_CHAN_KEY and not NOTIFY_URL:
-        log.warning("未配置任何通知通道 (SERVER_CHAN_KEY / NOTIFY_URL)")
+        log.warning("未配置任何通知通道 (SERVER_CHAN_KEY / PUSHPLUS_TOKEN / NOTIFY_URL)")
     print(f"\n{'='*50}\n[{title}]\n{msg}\n{'='*50}\n")
     return False
 
