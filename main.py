@@ -2,8 +2,8 @@
 # Market Funnel Strategy – Signal & Heartbeat Monitor
 #
 # 双轨制推送：
-#   周一至周四：仅触发条件时发送抄底警报
-#   周五收盘后：必发每周常规报告（心跳信号）+ 可选紧急警报
+#   周二至周日：仅触发条件时发送抄底警报
+#   每周一 20:00 必发常规报告（心跳信号），其他交易日仅触发时发警报
 #
 # 通知方式（参考 kugecf/daily-report）：
 #   主通道：Server酱 (SERVER_CHAN_KEY) → 微信推送
@@ -351,8 +351,8 @@ def main() -> None:
 
     # 3. 时间判断
     now_utc = datetime.now(timezone.utc)
-    is_friday = now_utc.weekday() == 4
-    is_weekly_report = is_friday or os.environ.get("FORCE_WEEKLY", "").lower() == "true"
+    is_monday = now_utc.weekday() == 0
+    is_weekly_report = is_monday or os.environ.get("FORCE_WEEKLY", "").lower() == "true"
 
     snapshot = build_snapshot(spy, qqq, vix, fg)
 
@@ -361,7 +361,7 @@ def main() -> None:
 
     # ==================== 消息分发 ====================
 
-    # A) 周五常规报告（心跳信号）
+    # A) 周一常规报告（心跳信号）
     if is_weekly_report:
         market_status = (
             "🟢 市场整体安全，未触发抄底信号。继续持有现金拿固收利息。"
@@ -374,7 +374,7 @@ def main() -> None:
             f"漏斗综合得分: {score} / 6\n"
             f"状态评估: {market_status}\n"
             f"{snapshot}\n"
-            f"💡 本报告每周五收盘后准时发送，代表监控系统运行正常。"
+            f"💡 本报告每周一晚间准时发送，代表监控系统运行正常。"
         )
         log.info("发送每周常规报告...")
         send_notification("美股策略·每周报告", weekly_msg)
@@ -393,7 +393,7 @@ def main() -> None:
         send_notification(f"🚨 抄底警报·得分{score}", alert_msg)
 
     if score == 0 and not is_weekly_report:
-        log.info("得分 0/6，非周五，静默观望（不发送消息）")
+        log.info("得分 0/6，非周一，静默观望（不发送消息）")
 
     log.info("===== 美股漏斗监控完成 =====")
 

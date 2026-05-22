@@ -2,9 +2,8 @@
 
 on:
   schedule:
-    # 美东下午 4:30（收盘后半小时），周一至周五
-    # 对应北京时间周二至周六凌晨 4:30
-    - cron: "30 20 * * 1-5"
+    # 北京时间周一晚 8:00（UTC 12:00），每周一次
+    - cron: "0 12 * * 1"
   workflow_dispatch:
     inputs:
       force_weekly:
