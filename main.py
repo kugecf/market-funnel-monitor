@@ -305,11 +305,17 @@ def build_snapshot(spy: dict, qqq: dict, vix: float, fg: float) -> str:
         f"- Nasdaq 100 日线 RSI: {qqq['rsi']:.2f}\n"
         f"- VIX 恐慌指数: {vix:.2f}\n"
         f"- CNN 恐惧贪婪指数: {fg:.1f}\n"
+        "---------------------------\n"
+        "🔗 手动复核链接:\n"
+        "- S&P 500: https://www.tradingview.com/symbols/SPX/\n"
+        "- Nasdaq 100: https://www.tradingview.com/symbols/NASDAQ-NDX/\n"
+        "- VIX: https://www.tradingview.com/symbols/TVC-VIX/\n"
+        "- CNN 恐惧贪婪: https://www.cnn.com/markets/fear-and-greed\n"
         "---------------------------"
     )
 
 
-# ==================== Main ====================
+# ==================== Main
 
 def main() -> None:
     log.info("===== 美股漏斗监控启动 =====")
