@@ -58,7 +58,7 @@ MA200_DEVIATION_BREACH = 0
 
 # ==================== Data Fetching ====================
 
-def fetch_cnn_fear_greed() -> float | None:
+def fetch_fear_greed() -> float | None:
     url = "https://production.dataviz.cnn.io/index/fearandgreed/graph/current"
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
     try:
@@ -284,7 +284,7 @@ def main() -> None:
     spy = calc_indicators(INDEX_SP500)
     qqq = calc_indicators(INDEX_NASDAQ100)
     vix = fetch_vix()
-    fg = fetch_cnn_fear_greed()
+    fg = fetch_fear_greed()
 
     # 完整性检查
     missing = []
