@@ -59,19 +59,53 @@ MA200_DEVIATION_BREACH = 0
 # ==================== Data Fetching ====================
 
 def fetch_fear_greed() -> float | None:
-    url = "https://production.dataviz.cnn.io/index/fearandgreed/graph/current"
+    """抓取恐惧贪婪指数 (0-100)。多源回退：CNN 新版 -> CNN 旧版 -> Alternative.me"""
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
-    try:
-        r = requests.get(url, headers=headers, timeout=15)
-        r.raise_for_status()
-        data = r.json()
-        score = float(data["fear_and_greed"]["score"])
-        log.info("CNN 恐惧贪婪指数: %.1f", score)
-        return score
-    except Exception:
-        log.exception("CNN 恐惧贪婪指数抓取失败")
-        return None
 
+    # 源 1: CNN 新版 API (graphdata)
+    try:
+        r = requests.get(
+            "https://production.dataviz.cnn.io/index/fearandgreed/graphdata",
+            headers=headers, timeout=15,
+        )
+        if r.status_code == 200:
+            data = r.json()
+            score = float(data["fear_and_greed"]["score"])
+            log.info("恐惧贪婪指数 (CNN): %.1f", score)
+            return score
+    except Exception:
+        log.debug("CNN graphdata API 失败")
+
+    # 源 2: CNN 旧版 API (graph/current)
+    try:
+        r = requests.get(
+            "https://production.dataviz.cnn.io/index/fearandgreed/graph/current",
+            headers=headers, timeout=15,
+        )
+        if r.status_code == 200:
+            data = r.json()
+            score = float(data["fear_and_greed"]["score"])
+            log.info("恐惧贪婪指数 (CNN legacy): %.1f", score)
+            return score
+    except Exception:
+        log.debug("CNN legacy API 失败")
+
+    # 源 3: Alternative.me 加密货币版 (近似参考)
+    try:
+        r = requests.get(
+            "https://api.alternative.me/fng/?limit=1",
+            headers=headers, timeout=15,
+        )
+        if r.status_code == 200:
+            data = r.json()
+            score = float(data["data"][0]["value"])
+            log.info("恐惧贪婪指数 (Alternative.me): %.1f", score)
+            return score
+    except Exception:
+        log.debug("Alternative.me 失败")
+
+    log.warning("恐惧贪婪指数全部数据源失败")
+    return None
 
 def calc_indicators(symbol: str) -> dict | None:
     try:
